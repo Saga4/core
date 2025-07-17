@@ -159,14 +159,16 @@ async def websocket_update(
 def _user_info(user: User) -> dict[str, Any]:
     """Format a user."""
 
-    ha_username = next(
-        (
-            cred.data.get("username")
-            for cred in user.credentials
-            if cred.auth_provider_type == "homeassistant"
-        ),
-        None,
-    )
+    # Extract credentials and groups once to avoid repeated attribute lookups
+    credentials = user.credentials
+    groups = user.groups
+
+    # Fast-path for finding the Home Assistant username
+    ha_username = None
+    for cred in credentials:
+        if cred.auth_provider_type == "homeassistant":
+            ha_username = cred.data.get("username")
+            break
 
     return {
         "id": user.id,
@@ -176,6 +178,6 @@ def _user_info(user: User) -> dict[str, Any]:
         "is_active": user.is_active,
         "local_only": user.local_only,
         "system_generated": user.system_generated,
-        "group_ids": [group.id for group in user.groups],
-        "credentials": [{"type": c.auth_provider_type} for c in user.credentials],
+        "group_ids": [group.id for group in groups],
+        "credentials": [{"type": c.auth_provider_type} for c in credentials],
     }
