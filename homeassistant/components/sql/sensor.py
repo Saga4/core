@@ -53,6 +53,11 @@ from .const import CONF_COLUMN_NAME, CONF_QUERY, DOMAIN
 from .models import SQLData
 from .util import redact_credentials, resolve_db_url
 
+_SQL_LAMBDA_CACHE: LRUCache = LRUCache(1000)  # local (avoid outer import cost)
+
+# Module-level LRU cache for StatementLambdaElement objects keyed by query string
+_lambda_stmt_cache: LRUCache = LRUCache(1000)
+
 _LOGGER = logging.getLogger(__name__)
 
 _SQL_LAMBDA_CACHE: LRUCache = LRUCache(1000)
@@ -302,8 +307,16 @@ def _validate_and_get_session_maker_for_db_url(db_url: str) -> scoped_session | 
 
 def _generate_lambda_stmt(query: str) -> StatementLambdaElement:
     """Generate the lambda statement."""
+    # Fast-path: Avoid repeated expensive lambda_stmt calls for the same query
+    stmt = _lambda_stmt_cache.get(query)
+    if stmt is not None:
+        return stmt
     text = sqlalchemy.text(query)
-    return lambda_stmt(lambda: text, lambda_cache=_SQL_LAMBDA_CACHE)
+    # The lambda is now a fixed function for all queries of this string,
+    # so the cache will recognize repeats.
+    stmt = lambda_stmt(lambda: text, lambda_cache=_SQL_LAMBDA_CACHE)
+    _lambda_stmt_cache[query] = stmt
+    return stmt
 
 
 class SQLSensor(ManualTriggerSensorEntity):
