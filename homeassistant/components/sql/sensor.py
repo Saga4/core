@@ -11,7 +11,7 @@ import sqlalchemy
 from sqlalchemy import lambda_stmt
 from sqlalchemy.engine import Result
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.sql.lambdas import StatementLambdaElement
 from sqlalchemy.util import LRUCache
 
@@ -278,14 +278,15 @@ def _validate_and_get_session_maker_for_db_url(db_url: str) -> scoped_session | 
 
     This does I/O and should be run in the executor.
     """
-    sess: Session | None = None
+    engine = None
     try:
+        # Try to connect to the database directly, to keep resource usage low.
         engine = sqlalchemy.create_engine(db_url, future=True)
+        with engine.connect() as connection:
+            connection.execute(sqlalchemy.text("SELECT 1;"))
+        # Only create the sessionmaker if connection succeeded.
         sessmaker = scoped_session(sessionmaker(bind=engine, future=True))
-        # Run a dummy query just to test the db_url
-        sess = sessmaker()
-        sess.execute(sqlalchemy.text("SELECT 1;"))
-
+        return sessmaker
     except SQLAlchemyError as err:
         _LOGGER.error(
             "Couldn't connect using %s DB_URL: %s",
@@ -293,11 +294,6 @@ def _validate_and_get_session_maker_for_db_url(db_url: str) -> scoped_session | 
             redact_credentials(str(err)),
         )
         return None
-    else:
-        return sessmaker
-    finally:
-        if sess:
-            sess.close()
 
 
 def _generate_lambda_stmt(query: str) -> StatementLambdaElement:
