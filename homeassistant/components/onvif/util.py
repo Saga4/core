@@ -9,8 +9,10 @@ from zeep.exceptions import Fault
 
 def extract_subcodes_as_strings(subcodes: Any) -> list[str]:
     """Stringify ONVIF subcodes."""
+    # Fast path for list input using attribute getter for better speed than hasattr
     if isinstance(subcodes, list):
-        return [code.text if hasattr(code, "text") else str(code) for code in subcodes]
+        _get_text = _safe_get_text  # Local for speed
+        return [_get_text(code) for code in subcodes]
     return [str(subcodes)]
 
 
@@ -18,21 +20,22 @@ def stringify_onvif_error(error: Exception) -> str:
     """Stringify ONVIF error."""
     if isinstance(error, Fault):
         message = error.message
-        if error.detail is not None:  # checking true is deprecated
-            # Detail may be a bytes object, so we need to convert it to string
-            if isinstance(error.detail, bytes):
-                detail = error.detail.decode("utf-8", "replace")
-            else:
-                detail = str(error.detail)
-            message += ": " + detail
-        if error.code is not None:  # checking true is deprecated
-            message += f" (code:{error.code})"
-        if error.subcodes is not None:  # checking true is deprecated
-            message += (
-                f" (subcodes:{','.join(extract_subcodes_as_strings(error.subcodes))})"
+        if error.detail is not None:
+            # Detail may be bytes, decode if so
+            detail = (
+                error.detail.decode("utf-8", "replace")
+                if isinstance(error.detail, bytes)
+                else str(error.detail)
             )
+            message = f"{message}: {detail}"
+        if error.code is not None:
+            message = f"{message} (code:{error.code})"
+        if error.subcodes is not None:
+            # Avoid recomputing and double formatting
+            subcodes_str = ",".join(extract_subcodes_as_strings(error.subcodes))
+            message = f"{message} (subcodes:{subcodes_str})"
         if error.actor:
-            message += f" (actor:{error.actor})"
+            message = f"{message} (actor:{error.actor})"
     else:
         message = str(error)
     return message or f"Device sent empty error with type {type(error)}"
@@ -53,3 +56,11 @@ def is_auth_error(error: Exception) -> bool:
         )
         or "auth" in stringify_onvif_error(error).lower()
     )
+
+
+def _safe_get_text(code: Any) -> str:
+    """Efficient attribute getter for code.text or fallback to str(code)."""
+    try:
+        return code.text
+    except AttributeError:
+        return str(code)
