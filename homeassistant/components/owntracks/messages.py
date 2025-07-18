@@ -36,16 +36,19 @@ def _parse_topic(topic, subscribe_topic):
 
     Async friendly.
     """
-    subscription = subscribe_topic.split("/")
     try:
-        user_index = subscription.index("#")
+        user_index = subscribe_topic.split("/").index("#")
     except ValueError:
         _LOGGER.error("Can't parse subscription topic: '%s'", subscribe_topic)
         raise
 
-    topic_list = topic.split("/")
+    # split only as much as needed for the indices we access
+    topic_list = topic.split(
+        "/", user_index + 2
+    )  # will ensure user, device exist as elements
     try:
-        user, device = topic_list[user_index], topic_list[user_index + 1]
+        user = topic_list[user_index]
+        device = topic_list[user_index + 1]
     except IndexError:
         _LOGGER.error("Can't parse topic: '%s'", topic)
         raise
