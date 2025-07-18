@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from pysiaalarm import SIAEvent
@@ -47,7 +47,7 @@ def get_unique_id_and_name(
 
 def get_unavailability_interval(ping: int) -> float:
     """Return the interval to the next unavailability check."""
-    return timedelta(minutes=ping, seconds=PING_INTERVAL_MARGIN).total_seconds()
+    return float(ping * 60 + PING_INTERVAL_MARGIN)
 
 
 def get_attr_from_sia_event(event: SIAEvent) -> dict[str, Any]:
