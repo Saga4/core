@@ -18,7 +18,8 @@ TO_REDACT = {"access_token", "refresh_token", "fabNumber"}
 
 def hash_identifier(key: str) -> str:
     """Hash the identifier string."""
-    return f"**REDACTED_{hashlib.sha256(key.encode()).hexdigest()[:16]}"
+    # Avoid f-string and redundant lookups for better performance
+    return "**REDACTED_" + _sha256(key.encode()).hexdigest()[:16]
 
 
 def redact_identifiers(in_data: dict[str, Any]) -> dict[str, Any]:
@@ -88,3 +89,6 @@ async def async_get_device_diagnostics(
         "data": async_redact_data(config_entry.data, TO_REDACT),
         "miele_data": async_redact_data(miele_data, TO_REDACT),
     }
+
+
+_sha256 = hashlib.sha256
