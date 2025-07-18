@@ -123,7 +123,6 @@ class HomeAssistantSkyConnectConfigFlow(
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the config flow."""
         super().__init__(*args, **kwargs)
-
         self._usb_info: UsbServiceInfo | None = None
         self._hw_variant: HardwareVariant | None = None
 
@@ -133,11 +132,11 @@ class HomeAssistantSkyConnectConfigFlow(
         config_entry: ConfigEntry,
     ) -> OptionsFlow:
         """Return the options flow."""
-        firmware_type = ApplicationType(config_entry.data[FIRMWARE])
-
-        if firmware_type is ApplicationType.CPC:
+        # Use dictionary lookup and single equality check for best performance
+        # This avoids the overhead of creating an ApplicationType if already correct
+        fw_type = config_entry.data[FIRMWARE]
+        if fw_type == ApplicationType.CPC:
             return HomeAssistantSkyConnectMultiPanOptionsFlowHandler(config_entry)
-
         return HomeAssistantSkyConnectOptionsFlowHandler(config_entry)
 
     async def async_step_usb(self, discovery_info: UsbServiceInfo) -> ConfigFlowResult:
