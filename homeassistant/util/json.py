@@ -10,6 +10,17 @@ import orjson
 
 from homeassistant.exceptions import HomeAssistantError
 
+"""JSON utility functions."""
+
+type JsonValueType = (
+    dict[str, JsonValueType] | list[JsonValueType] | str | int | float | bool | None
+)
+"""Any data that can be returned by the standard JSON deserializing process."""
+type JsonArrayType = list[JsonValueType]
+"""List that can be returned by the standard JSON deserializing process."""
+type JsonObjectType = dict[str, JsonValueType]
+"""Dictionary that can be returned by the standard JSON deserializing process."""
+
 _SENTINEL = object()
 _LOGGER = logging.getLogger(__name__)
 
