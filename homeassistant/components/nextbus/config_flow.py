@@ -1,6 +1,5 @@
 """Config flow to configure the Nextbus integration."""
 
-from collections import Counter
 import logging
 
 from py_nextbus import NextBusClient
@@ -16,7 +15,6 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import CONF_AGENCY, CONF_ROUTE, DOMAIN
-from .util import listify
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,18 +45,28 @@ def _get_route_tags(client: NextBusClient, agency_tag: str) -> dict[str, str]:
 def _get_stop_tags(
     client: NextBusClient, agency_tag: str, route_tag: str
 ) -> dict[str, str]:
+    # Fetch route details and extract stop ids/titles
     route_config = client.route_details(route_tag, agency_tag)
-    stop_ids = {a["id"]: a["name"] for a in route_config["stops"]}
-    title_counts = Counter(stop_ids.values())
+    stops = route_config["stops"]
+    stop_ids = {a["id"]: a["name"] for a in stops}
 
-    stop_directions: dict[str, str] = {}
-    for direction in listify(route_config["directions"]):
-        if not direction["useForUi"]:
-            continue
-        for stop in direction["stops"]:
-            stop_directions[stop] = direction["name"]
+    # Fast count of stop title occurrences
+    title_counts = {}
+    for name in stop_ids.values():
+        title_counts[name] = title_counts.get(name, 0) + 1
 
-    # Append directions for stops with shared titles
+    # Collect stop directions from directions used for UI only
+    stop_directions = {}
+    directions = route_config.get("directions")
+    if directions is not None and not isinstance(directions, list):
+        directions = [directions]
+    for direction in directions or ():
+        if direction.get("useForUi"):
+            name = direction["name"]
+            for stop in direction["stops"]:
+                stop_directions[stop] = name
+
+    # Only append directions to stop ids with duplicate titles
     for stop_id, title in stop_ids.items():
         if title_counts[title] > 1:
             stop_ids[stop_id] = f"{title} ({stop_directions.get(stop_id, stop_id)})"

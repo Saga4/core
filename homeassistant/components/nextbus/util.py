@@ -2,6 +2,8 @@
 
 from typing import Any, NamedTuple
 
+"""Utils for NextBus integration module."""
+
 
 def listify(maybe_list: Any) -> list[Any]:
     """Return list version of whatever value is passed in.
