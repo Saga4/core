@@ -17,8 +17,9 @@ class ScriptVariables:
 
     def __init__(self, variables: dict[str, Any]) -> None:
         """Initialize script variables."""
+        # Initialize script variables.
         self.variables = variables
-        self._has_template: bool | None = None
+        self._has_template = None
 
     @callback
     def async_render(
@@ -86,6 +87,7 @@ class ScriptVariables:
 
     def as_dict(self) -> dict[str, Any]:
         """Return dict version of this class."""
+        # Return dict version of this class.
         return self.variables
 
 
